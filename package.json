@@ -1,26 +1,56 @@
 {
-  "name": "app",
+  "name": "campus-ai",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "tsx scripts/seed.ts --reset",
+    "setup": "tsx scripts/seed.ts",
+    "test:smoke": "node scripts/smoke.mjs",
+    "test:p8": "node scripts/p8-smoke.mjs"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.13",
+    "@types/qrcode": "^1.5.6",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.4",
+    "html2canvas-pro": "^2.5.2",
+    "jose": "^6.2.13",
+    "jsqr": "^1.4.0",
+    "katex": "^0.19.1",
+    "lucide-react": "^1.62.0",
+    "mammoth": "^1.13.0",
     "next": "16.4.3",
+    "pptxgenjs": "^4.0.1",
+    "qrcode": "^1.5.4",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "server-only": "^0.0.1",
+    "unpdf": "^1.9.1"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "playwright": "^1.64.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

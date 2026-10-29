@@ -1,0 +1,128 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { Archive, NotebookPen, Pencil, Pin, PinOff, Plus, Search, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { ConversationSummary } from "@/lib/conversations";
+import { useT } from "@/lib/i18n/client";
+import type { DictKey } from "@/lib/i18n/dict";
+import { withBase } from "@/lib/base-path";
+
+/** Date buckets use local midnight — defer until after mount so SSR (UTC) matches first client paint. */
+function bucket(c: ConversationSummary, localReady: boolean): DictKey {
+  if (c.archived) return "chat.archived";
+  if (c.pinned) return "chat.pinned";
+  if (!localReady) return "common.earlier";
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  if (c.updatedAt >= start.getTime()) return "common.today";
+  if (c.updatedAt >= start.getTime() - 86_400_000) return "common.yesterday";
+  return "common.earlier";
+}
+const ORDER: DictKey[] = ["chat.pinned", "common.today", "common.yesterday", "common.earlier", "chat.archived"];
+
+export function HistoryList(props: {
+  items: ConversationSummary[];
+  activeId?: string;
+  onNew: () => void;
+  onSearch: (q: string) => void;
+  onChanged: () => void;
+  guardLeave: () => boolean;
+}) {
+  const { t } = useT();
+  const router = useRouter();
+  const [q, setQ] = useState("");
+  const [localReady, setLocalReady] = useState(false);
+  const first = useRef(true);
+  const { onSearch } = props;
+
+  useEffect(() => setLocalReady(true), []);
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    const h = setTimeout(() => onSearch(q), 250);
+    return () => clearTimeout(h);
+  }, [q, onSearch]);
+
+  async function patch(id: string, body: object) {
+    await fetch(withBase(`/api/conversations/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    props.onChanged();
+  }
+  async function remove(id: string) {
+    if (!window.confirm(t("chat.deleteConfirm"))) return;
+    await fetch(withBase(`/api/conversations/${id}`), { method: "DELETE" });
+    props.onChanged();
+    if (id === props.activeId) router.push("/ai");
+  }
+
+  const groups = ORDER.map((key) => ({ key, items: props.items.filter((c) => bucket(c, localReady) === key) })).filter((g) => g.items.length);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="space-y-2 border-b border-slate-200 p-3">
+        <button className="btn btn-primary w-full" onClick={props.onNew}>
+          <Plus className="h-4 w-4" /> {t("chat.newChat")}
+        </button>
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+          <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder={t("chat.searchHistory")} aria-label={t("chat.searchHistory")} className="input py-1.5 pl-8" />
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2" data-testid="history">
+        {groups.length === 0 && <p className="p-3 text-sm text-slate-400">{t("chat.noHistory")}</p>}
+        {groups.map((g) => (
+          <div key={g.key} className="mb-3">
+            <div className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-slate-400">
+              {g.key === "chat.pinned" && <Pin className="h-3 w-3" />}
+              {g.key === "chat.archived" && <Archive className="h-3 w-3" />}
+              {t(g.key)}
+            </div>
+            <ul>
+              {g.items.map((c) => (
+                <li key={c.id} className="group relative">
+                  <Link
+                    href={`/ai/c/${c.id}`}
+                    onClick={(e) => {
+                      if (c.id !== props.activeId && !props.guardLeave()) e.preventDefault();
+                    }}
+                    className={`flex items-center gap-2 rounded-lg px-2 py-1.5 pr-16 text-sm ${c.id === props.activeId ? "bg-brand-50 font-medium text-brand-800" : "text-slate-700 hover:bg-slate-100"}`}
+                  >
+                    <span className="w-5 shrink-0 text-center" aria-hidden>
+                      {c.tutorEmoji ?? (c.isDraft ? <NotebookPen className="inline h-3.5 w-3.5 text-slate-400" /> : "💬")}
+                    </span>
+                    <span className="truncate">{c.title}</span>
+                  </Link>
+                  {!c.archived && (
+                    <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0.5 group-focus-within:flex group-hover:flex">
+                      <button className="rounded p-1 text-slate-400 hover:bg-white hover:text-slate-700" title={c.pinned ? t("chat.unpin") : t("chat.pin")} onClick={() => patch(c.id, { pinned: !c.pinned })}>
+                        {c.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                      </button>
+                      {!c.tutorEmoji && (
+                        <button
+                          className="rounded p-1 text-slate-400 hover:bg-white hover:text-slate-700"
+                          title={t("chat.rename")}
+                          onClick={() => {
+                            const title = window.prompt(t("chat.renamePrompt"), c.title);
+                            if (title?.trim()) patch(c.id, { title });
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button className="rounded p-1 text-slate-400 hover:bg-white hover:text-rose-600" title={t("common.delete")} onClick={() => remove(c.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
