@@ -210,12 +210,12 @@ export async function yearEnd(_prev: UserActionState, form: FormData): Promise<U
   const studentIds = db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.role, "student")).all().map((r) => r.id);
   if (!studentIds.length) return { message: "0" };
   const c = schema.conversations;
-  const res =
+  const changed =
     mode === "delete"
-      ? db.delete(c).where(inArray(c.userId, studentIds)).run()
-      : db.update(c).set({ archived: true, pinned: false }).where(and(inArray(c.userId, studentIds), eq(c.archived, false))).run();
+      ? db.delete(c).where(inArray(c.userId, studentIds)).returning({ id: c.id }).all()
+      : db.update(c).set({ archived: true, pinned: false }).where(and(inArray(c.userId, studentIds), eq(c.archived, false))).returning({ id: c.id }).all();
   setSetting("yearEndPolicy", mode);
-  audit(me, "users.yearEnd", mode, `${res.changes} conversations`);
+  audit(me, "users.yearEnd", mode, `${changed.length} conversations`);
   revalidatePath("/", "layout");
-  return { message: String(res.changes) };
+  return { message: String(changed.length) };
 }

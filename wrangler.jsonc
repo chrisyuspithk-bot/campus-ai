@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "campus-ai",
+  "main": "cf/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "campus-ai" }],
+  "durable_objects": { "bindings": [{ "name": "CAMPUS_APP", "class_name": "CampusApp" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CampusApp"] }],
+  "vars": {
+    "APP_URL": "https://campus-ai.securepro-hk.workers.dev",
+    "DATABASE_PATH": "/tmp/campus-ai/campus.db",
+    "DB_INSTANCE": "v2"
+  }
+}

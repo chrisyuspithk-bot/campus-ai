@@ -44,3 +44,8 @@ next-env.d.ts
 # local database + uploads
 /data/
 *.db
+
+# cloudflare build output
+/.open-next/
+/.wrangler/
+/cf/seed.generated.json
